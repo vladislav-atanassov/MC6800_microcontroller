@@ -1,4 +1,5 @@
 import os
+import subprocess
 import argparse
 
 # Define a maximum address space size, e.g., 64KB for 16-bit addresses
@@ -46,9 +47,13 @@ def s19_to_bin(s19_file):
 
 # Set up argparse to handle command-line arguments
 if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser(description="Convert S19 file to binary file.")
     parser.add_argument("s19_file", help="The input S19 file.")
     args = parser.parse_args()
+
+    # Running the assembler program first to get the .s19 file for the script
+    subprocess.run(["../bin/as0", f"{args.s19_file[:-4]}.asm", "-l", "cre", "c", "s"]) # [:-4] to remove the .s19 from the file name
 
     # Run the conversion function with the provided input file
     s19_to_bin(args.s19_file)
