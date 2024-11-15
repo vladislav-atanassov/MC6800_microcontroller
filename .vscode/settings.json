@@ -59,5 +59,8 @@
   "files.associations": {
     "globals.h": "c",
     "eval.h": "c"
+  },
+  "[m68k]": {
+    "editor.rulers": []
   }
 }
