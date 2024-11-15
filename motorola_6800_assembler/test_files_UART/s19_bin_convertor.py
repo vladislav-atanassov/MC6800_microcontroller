@@ -53,7 +53,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Running the assembler program first to get the .s19 file for the script
-    subprocess.run(["../bin/as0", f"{args.s19_file[:-4]}.asm", "-l", "cre", "c", "s"]) # [:-4] to remove the .s19 from the file name
+    subprocess.run(["../bin/as0", f"{args.s19_file[:-4]}.asm"]) # [:-4] to remove the .s19 from the file name
 
     # Run the conversion function with the provided input file
     s19_to_bin(args.s19_file)
