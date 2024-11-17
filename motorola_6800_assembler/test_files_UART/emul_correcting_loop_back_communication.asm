@@ -39,9 +39,19 @@ initUART ldaa #$07          ; Enable RDA, THRE interrupt flags
 ; TODO: so how to use the condtional calling of subroutines correctly
 
 ; TODO: Mentions in the next Git Commit:
-; TODO: Solution to the main problem
-; TODO: Added wait for the HDL_RBA with waitRDA
-; TODO: Renaming of labels
+;       - Solution to the main problem
+;       - Added wait for the HDL_RBA with waitRDA
+;       - Renaming of labels
+
+; TODO: Future ideas:
+;       ;! For this idea we need an extra and gate to control TX while RX in progress
+;       - add two diodes (yellow and blue) contorolled by /OUT1 
+;           - When /OUT1 is active indicates that the RX is in progress (yellow)
+;           - When /OUT1 is not active indicates that the RX has finished (blue)
+;       - add two diodes (yellow and blue) contorolled by /OUT2 
+;           - When /OUT2 is active indicates that the TX is in progress (yellow)
+;           - When /OUT2 is not active indicates that the TX has finished (blue)
+;       - add a diode (red) that signals that the buffer is filled controlled by /DTR
 
 ; Main loop
 mainLoop ldaa IIR               ; Read Interrupt Identification Register

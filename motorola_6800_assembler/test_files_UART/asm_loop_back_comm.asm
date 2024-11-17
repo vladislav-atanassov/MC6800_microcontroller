@@ -130,6 +130,10 @@ _val_irf_err_rx:
 _rts_val_err_rx:
     rts
 
+_tx_loop:
+    
+
+
 *; Waits until the interrupt flag THRE is raised
 _wait_thre:
     ldaa IIR                *; Read Interrupt Identification Register
