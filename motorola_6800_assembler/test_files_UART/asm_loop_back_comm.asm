@@ -1,3 +1,18 @@
+*; TODO: Consider an optimization of this approach
+*;     - Current idea for having negative indexing from the top of the stack instead from the bottom as it is now
+*;     - Specifically for loading BUFFER_C_P_OFF beacuse it is an offset it has to be loaded in the X register
+*; 
+*;?	ldx #$SP_TOP_ADR    *; Load the address of start of the stack in the X register   
+*;?	stx CALC_ADR_IDXR   *; Store the address of start of the stack in the calculation memory 
+*;?	ldab #ANY_OFF       *; Store the wanted offset in ACCB   
+*;?	negb                *; Turn the offset in negative value because the stack grows from top to bottom
+*;?	stab CALC_ADR_ACC   *; Store the wanted offset in the calculation memory
+*;?	ldx CALC_ADR_IDXR   *; Load the address that is with the wanted offset in the X register
+*;?	ldab ,x             *; Load the data at the wanted offset address in ACCB
+*;?	stab CALC_ADR_ACC   *; Store the data in the calculation memory
+*;?	ldx CALC_ADR_IDXR   *; Load the data in the X register
+*;?	staa 0,x            *; Store the data in ACCA with offset that is the data in the X register
+
 *; Define UART registers
 RBTHR           equ $2000  *; UART Transmit Holding Register
 IER             equ $2001  *; Interrupt Enable Register
