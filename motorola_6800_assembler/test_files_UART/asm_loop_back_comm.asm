@@ -64,7 +64,6 @@ _push_vars_stack:
     ldaa #$00               *; TX_DONE = 0
     psha                    *; Push the default value for flag for indicating if transmiting is done (F)
 
-*;! Removed the error validation because it is already done in _rx_loop and _tx_loop
 *; Main loop
 _main_loop:
     jsr _rx_loop            *; Start the RX loop
