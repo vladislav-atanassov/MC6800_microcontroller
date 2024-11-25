@@ -145,10 +145,8 @@ _rt_hdl_irf_rda:
 *; TODO: Implement the _hdl_buffer_full subroutine
 *; Handle buffer full
 _hdl_buffer_full:
-    nop
-*;! Here to indicate future idea for diodes indication for exit states of the program
-*; ldaa #$01                *; Set /DTR low to indicate that the buffer is full 
-*; staa MCR
+    ldaa #$04   *; Setting /OUT1 to low and /OUT2 to high to indicate buffer full
+    staa MCR
 
     bra _hdl_buffer_full
 
@@ -252,45 +250,3 @@ _hdl_irf_err_tx:
     ldaa LSRg               *; Read Line Status Register
     clra                    *; Clear accumulator (error handling can be improved)
     rts
-
-
-
-
-
-
-
-
-
-
-
-
-    lds $1fff
-
-    ldx #SP_TO_ADR      ; 1fff
-    stx #CALC_ADR_IDXR
-    ldab CALC_ADR_ACC   ; b = ff
-    subb #$07
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
