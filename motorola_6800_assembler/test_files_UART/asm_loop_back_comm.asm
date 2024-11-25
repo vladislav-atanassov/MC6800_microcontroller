@@ -1,33 +1,16 @@
-*; TODO: Consider an optimization of this approach
-*;     - Current idea for having negative indexing from the top of the stack instead from the bottom as it is now
-*;     - Specifically for loading BUFFER_C_P_OFF beacuse it is an offset it has to be loaded in the X register
-*; 
-*;?	ldx #$SP_TOP_ADR    *; Load the address of start of the stack in the X register   
-*;?	stx CALC_ADR_IDXR   *; Store the address of start of the stack in the calculation memory 
-*;?	ldab #ANY_OFF       *; Store the wanted offset in ACCB   
-*;?	negb                *; Turn the offset in negative value because the stack grows from top to bottom
-*;?	stab CALC_ADR_ACC   *; Store the wanted offset in the calculation memory
-*;?	ldx CALC_ADR_IDXR   *; Load the address that is with the wanted offset in the X register
-*;?	ldab ,x             *; Load the data at the wanted offset address in ACCB
-*;?	stab CALC_ADR_ACC   *; Store the data in the calculation memory
-*;?	ldx CALC_ADR_IDXR   *; Load the data in the X register
-*;?	staa 0,x            *; Store the data in ACCA with offset that is the data in the X register
-
 *; Define UART registers
-RBTHR           equ $2000  *; UART Transmit Holding Register
-IER             equ $2001  *; Interrupt Enable Register
-IIR             equ $2002  *; Interrupt Identification Register
-LCR             equ $2003  *; Line Control Register
-MCR             equ $2004  *; MODEM Control Register  
-LSRg            equ $2005  *; Line Status Register
+RBTHR           equ $2000   *; UART Transmit Holding Register
+IER             equ $2001   *; Interrupt Enable Register
+IIR             equ $2002   *; Interrupt Identification Register
+LCR             equ $2003   *; Line Control Register
+MCR             equ $2004   *; MODEM Control Register  
+LSRg            equ $2005   *; Line Status Register
 
 *; Define UART Interrupt flags
-UART_CODE_THRE  equ $02    *; Code for UART Transmiter Holding register Empty
-UART_CODE_RDA   equ $04    *; Code for Recieved Data Available
-UART_CODE_ERR   equ $06    *; Code for UART error in IIR
+UART_CODE_THRE  equ $02     *; Code for UART Transmiter Holding register Empty
+UART_CODE_RDA   equ $04     *; Code for Recieved Data Available
+UART_CODE_ERR   equ $06     *; Code for UART error in IIR
 
-*; TODO: Are BUFFER_C_C_OFF and BUFFER_C_P_OFF really needed both
-*;?      - they make it easier for the programmer tho are representing the same just negatively inverted as a value
 *; Define variables, flags, constants needed for the program
 BUFFER_SIZE_MAX equ $ff     *; Define buffer max size   
 BUFFER_C_C_OFF  equ $fd     *; Define offset from SP for buffercurrcap
@@ -72,22 +55,21 @@ _push_vars_stack:
 	psha
 	ldaa #BUFFER_SIZE_MAX   *; BUFFERCC = BUFFER_SIZE_MAX
     psha                    *; Push the default value for variable for the buffer current capacity in the stack (max size)
-    ldaa #$00               *; BUFFERFULL = 0
+    ldaa #$00               *; BUFFER_FULL = 0
     psha                    *; Push the default value for flag for indicating if buffer is full (F)
-    ldaa #BUFFER_STR_ADR    *; SRAMCURR = BUFFER_STR_ADR
-    psha                    *; Push the default value for variable for the current position of the buffer (begining of SRAM)
-    ldaa #$00               *; RXDONE = 0
+    ldaa #$00               *; BUFFER_C_P = 0
+    psha                    *; Push the default value for variable for the current position of the buffer (0)
+    ldaa #$00               *; R_DONE = 0
     psha                    *; Push the default value for flag for indicating if recieving is done (F)
-    ldaa #$00               *; TXDONE = 0
+    ldaa #$00               *; TX_DONE = 0
     psha                    *; Push the default value for flag for indicating if transmiting is done (F)
 
+*;! Removed the error validation because it is already done in _rx_loop and _tx_loop
 *; Main loop
 _main_loop:
     jsr _rx_loop            *; Start the RX loop
-    jsr _val_irf_err_rx     *; Check for RX communication error
     
     jsr _tx_loop            *; Start the TX loop
-    jsr _val_irf_err_rx     *; Check for TX communication error
 
     bra _main_loop          *; Continue waiting for next data 
 
@@ -183,7 +165,7 @@ _rt_val_err_rx:
     rts                     *; Return from subroutine
 
 *; TODO  better logic for handling RX error
-*;? TODO  couter to reset the chip (with MR for ex.) 
+*;? TODO  counter to reset the chip (with MR for ex.) 
 *;?       if the validation fails too many times
 *; Handle RX communication error 
 _hdl_irf_err_rx:
@@ -271,3 +253,45 @@ _hdl_irf_err_tx:
     ldaa LSRg               *; Read Line Status Register
     clra                    *; Clear accumulator (error handling can be improved)
     rts
+
+
+
+
+
+
+
+
+
+
+
+
+    lds $1fff
+
+    ldx #SP_TO_ADR      ; 1fff
+    stx #CALC_ADR_IDXR
+    ldab CALC_ADR_ACC   ; b = ff
+    subb #$07
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
