@@ -1,35 +1,34 @@
 ; Define UART registers
-RBTHR .equ $2000            ; UART Transmit Holding Register
-IER   .equ $2001            ; Interrupt Enable Register
-IIR   .equ $2002            ; Interrupt Identification Register
-LCR   .equ $2003            ; Line Control Register
-MCR   .equ $2004            ; MODEM Control Register  
-LSRg  .equ $2005            ; Line Status Register
+RBTHR           .equ $2000  ; UART Transmit Holding Register
+IER             .equ $2001  ; Interrupt Enable Register
+IIR             .equ $2002  ; Interrupt Identification Register
+LCR             .equ $2003  ; Line Control Register
+MCR             .equ $2004  ; MODEM Control Register  
+LSRg            .equ $2005  ; Line Status Register
 
 ; Define UART Interrupt flags
-UARTCODETHRE  .equ $02      ; Code for UART Transmiter Holding register Empty
-UARTCODERDA   .equ $04      ; Code for Recieved Data Available
-UARTCODEERR   .equ $06      ; Code for UART error in IIR
+UARTCODETHRE    .equ $02    ; Code for UART Transmiter Holding register Empty
+UARTCODERDA     .equ $04    ; Code for Recieved Data Available
+UARTCODEERR     .equ $06    ; Code for UART error in IIR
 
-; TODO: Are BUFFERCCOFF and BUFFERCURRPOFF really needed both
-;?      - they make it easier for the programmer tho are representing the same just negatively inverted as a value
+;! These are not the real addresses! These addresses are for testing in SDK6800 Emulator
 ; Define variables, flags, constants needed for the program
-BUFFERSIZEMAX .equ $0f      ; Define buffer max size   
-BUFFERCCOFF   .equ $0d      ; Define offset from SP for buffercurrcap
-BUFFERFULLOFF .equ $0c      ; Define offset from SP for bufferfull
-BUFFERSTARTADR .equ $00     ; Define the staring address of the buffer to store the received data
-BUFFERCURRPOFF .equ $0b     ; Define offset from SP for a variable that keeps track of where the last data is stored in buffer    
+BUFFERSTARTADR  .equ $00    ; Define the staring address of the buffer to store the received data
+BUFFERSIZEMAX   .equ $0f    ; Define buffer max size   
+CONSTSSTARTADR  .equ $12    ; Define the start of the constants memory space   
+BUFFERCCOFF     .equ $00    ; Define offset from CONSTSSTARTADR for buffercurrcap
+BUFFERFULLOFF   .equ $01    ; Define offset from CONSTSSTARTADR for bufferfull
+BUFFERCPOFF     .equ $02    ; Define offset from CONSTSSTARTADR for a variable that keeps track of where the last data is stored in buffer    
+RXDONEOFF       .equ $03    ; Define offset from CONSTSSTARTADR for flag indicating if recieve has ended (0-F, 1-T)
+TXDONEOFF       .equ $04    ; Define offset from CONSTSSTARTADR for flag indicating if transmit has ended (0-F, 1-T)
+BUFLASTBYTE     .equ $05    ; Defite offset from CONSTSSTARTADR for buffering the last transmitted/recieved byte
 
 ;! These are not the real addresses! These addresses are for testing in SDK6800 Emulator
-SPTOPADR       .equ $ff     ; Define the SP address
-SPBOTADR       .equ $f0     ; Define the Bottom address of the stack 
-
-RXDONEOFF      .equ $0a     ; Define offset for flag indicating if recieve has ended (0-F, 1-T)
-TXDONEOFF      .equ $09     ; Define offset for flag indicating if transmit has ended (0-F, 1-T)
+CALCADRIDXR     .equ $10
+CALCADRACC	    .equ $11
 
 ;! These are not the real addresses! These addresses are for testing in SDK6800 Emulator
-CALCADRACC	   .equ $ff
-CALCADRIDXR    .equ $fe
+SPADR           .equ $ff    ; Define the SP address
 
 ;! This is not the real address! That address is for testing in SDK6800 Emulator
     .org $0100              ; Start address of the program in the EPROM
@@ -50,22 +49,28 @@ inituart ldaa #$07          ; Enable RDA, THRE interrupt flags
     staa LCR                ; Write to Line Control Register
 
 ; Initialize SP
-    lds #SPTOPADR
+    lds #SPADR
 
 ; Push all of the vars/flag into the stack before the start of the program
-pushvarsstack ldaa #$00     ; Allocate memory for CALCADRACC, CALCADRIDXR
-	psha                    
-	psha
-	ldaa #BUFFERSIZEMAX     ; BUFFERCC = BUFFERSIZEMAX
-    psha                    ; Push the default value for variable for the buffer current capacity in the stack (max size)
+storevars ldx #CONSTSSTARTADR    
+    ldaa #BUFFERSIZEMAX     ; BUFFERCC = BUFFERSIZEMAX
+    staa BUFFERCCOFF,x      ; Store the default value for variable for the buffer current capacity (max size)
+    
     ldaa #$00               ; BUFFERFULL = 0
-    psha                    ; Push the default value for flag for indicating if buffer is full (F)
-    ldaa #BUFFERSTARTADR    ; SRAMCURR = BUFFERSTARTADR
-    psha                    ; Push the default value for variable for the current position of the buffer (begining of SRAM)
+    staa BUFFERFULLOFF,x    ; Store the default value for flag for indicating if buffer is full (F)
+    
+    ldaa #$00               ; BUFFERCP = 0
+    staa BUFFERCPOFF,x      ; Store the default value for variable for the current position of the buffer (0)
+    
     ldaa #$00               ; RXDONE = 0
-    psha                    ; Push the default value for flag for indicating if recieving is done (F)
+    staa RXDONEOFF,x        ; Store the default value for flag for indicating if recieving is done (F)
+    
     ldaa #$00               ; TXDONE = 0
-    psha                    ; Push the default value for flag for indicating if transmiting is done (F)
+    staa TXDONEOFF,x        ; Store the default value for flag for indicating if transmiting is done (F)
+    
+    ldaa #$00               ; BUFLASTBYTE = 0
+    staa BUFLASTBYTE,x      ; Store the default value for the last byte transmitted/recieved (00)
+
 
 ;! Used for testing the program's logic
 testinput ldaa #UARTCODERDA
@@ -74,22 +79,29 @@ testinput ldaa #UARTCODERDA
     staa RBTHR
 
 ; Main loop
-mainloop jsr rxLoop         ; Start the RX loop
-    jsr valirferrrx         ; Check for RX communication error
+mainloop jsr rxloop         ; Start the RX loop
     
-;   TODO: Create test data for the transmit and test
-    jsr txLoop              ; Start the TX loop
-    jsr valirferrrx         ; Check for TX communication error
+;!  Used for testing the program's logic
+    ldaa #UARTCODETHRE
+    staa IIR
+
+    jsr txloop              ; Start the TX loop
 
     bra mainloop            ; Continue waiting for next data 
 
+; Buffers the last transmitted/recieved byte 
+bufferlastbyte ldx #CONSTSSTARTADR
+    staa BUFLASTBYTE,x      ; Store the last byte into the constants buffer at index BUFLASTBYTE
+
+    rts
+
 ; Recieve loop 
-rxLoop jsr waitrda          ; Wait for data to be recieved
+rxloop jsr waitrda          ; Wait for data to be recieved
     jsr hdlirfrda           ; Handle Recieved Data Available
 
     jsr valirferrrx         ; Check for communication error
 
-    ldx #SPBOTADR
+    ldx #CONSTSSTARTADR
     ldaa RXDONEOFF,x       
     cmpa #01                ; Check if recieving is done
     beq rtrxloop            ; If done return from subroutine
@@ -100,9 +112,9 @@ rxLoop jsr waitrda          ; Wait for data to be recieved
     ldaa #$bb
     staa RBTHR	
 
-    bra rxLoop              ; If not done continue with the loop
+    bra rxloop              ; If not done continue with the loop
 
-rtrxloop rts                ; Return from subroutine rxLoop
+rtrxloop rts                ; Return from subroutine rxloop
 
 ; Wait until the interrupt flag RDA is raised
 waitrda ldaa IIR            ; Read Interrupt Identification Register
@@ -113,31 +125,32 @@ waitrda ldaa IIR            ; Read Interrupt Identification Register
 
 ; Handle Received Data Available   
 hdlirfrda ldaa RBTHR        ; Read received character
+    jsr bufferlastbyte      ; Buffer the last recieved byte
+
     cmpa #$00               ; Check for NULL terminator 
     beq markrxdone          ; If NULL terminator mark RX as done
 
 ;   Store the data at the next position in the SRAM
-	ldx #SPBOTADR           ; Load the base address (stack bottom) into X
-	ldab BUFFERCURRPOFF,x   ; Load the offset into accumulator B
+	ldx #CONSTSSTARTADR     ; Load the base address (stack bottom) into X
+	ldab BUFFERCPOFF,x      ; Load the offset into accumulator B
 	stab CALCADRACC         ; Store the offset  
 	ldx CALCADRIDXR         ; Load the offset into the index register
 	staa BUFFERSTARTADR,x   ; Store the recieved data in the current position of the buffer
 
-    ldx #SPBOTADR
-    inc BUFFERCURRPOFF,x    ; Move to the next position in SRAM
+	ldx #CONSTSSTARTADR     ; Load the start of the constants memory space into the X register 
+    inc BUFFERCPOFF,x       ; Move to the next position in SRAM
 
     dec BUFFERCCOFF,x       ; Decrement the buffer current capacity 
 
-; Check if buffer is full
-	ldx #SPBOTADR 
+;   Check if buffer is full
     ldaa BUFFERCCOFF,x      
     cmpa #$00 
     beq hdlbufferfull   
 
     bra rthdlirfrda
 
-markrxdone ldaa #$01            
-    ldx #SPBOTADR
+markrxdone ldx #CONSTSSTARTADR
+    ldaa #$01            
     staa RXDONEOFF,x        ; Setting the flag for recieve done to true
 
 ;! Here to indicate future idea for diodes indication for exit states of the program
@@ -146,9 +159,9 @@ markrxdone ldaa #$01
 
 ;   TODO: Create a routine that cleans up the values of variables (set to default values)  
 ;   Set the value of the current position of the buffer in the SRAM to default (the start address - $0000)
+    ldx #CONSTSSTARTADR         
     ldaa #BUFFERSTARTADR
-    ldx #SPBOTADR         
-    staa BUFFERCURRPOFF,x
+    staa BUFFERCPOFF,x   
 
     clra                    ; Clear ACCA
 
@@ -156,12 +169,13 @@ rthdlirfrda rts             ; Return from subroutine
 
 ; TODO: Implement the hdlbufferfull subroutine
 ; Handle buffer full
-hdlbufferfull nop
+;! Just for testing 
+hdlbufferfull bra markrxdone
 ;! Here to indicate future idea for diodes indication for exit states of the program
 ; ldaa #$01                 ; Set /DTR low to indicate that the buffer is full 
 ; staa MCR
 
-    bra hdlbufferfull
+;    bra hdlbufferfull
 
 ; Error validation for IRF for communication error
 valirferrrx ldaa IIR        ; Read Interrupt Identification Register
@@ -184,8 +198,10 @@ hdlirferrrx ldaa LSRg       ; Read Line Status Register
 txloop jsr waitthre         ; Wait until the transmitter holding register is empty
     jsr hdlirfthre          ; Handle Transmitter Holding Register Empty
 
+    jsr valirferrtx         ; Check for communication error
+
 ;   Check if transmitting is done
-    ldx #SPBOTADR
+    ldx #CONSTSSTARTADR
     ldaa TXDONEOFF,x
     cmpa #01                    
     beq rttxloop            ; If done return from subroutine
@@ -202,19 +218,21 @@ waitthre ldaa IIR           ; Read Interrupt Identification Register
     rts                     ; Return from subroutine
 
 ; Handle Transmitter Holding Register Empty
-hdlirfthre ldx #SPBOTADR    ; Load the base address (stack bottom) into X
-	ldab BUFFERCURRPOFF,x   ; Load the offset into accumulator B
+hdlirfthre ldx #CONSTSSTARTADR    ; Load the base address (stack bottom) into X
+	ldab BUFFERCPOFF,x      ; Load the offset into accumulator B
 	stab CALCADRACC         ; Store the offset  
 	ldx CALCADRIDXR         ; Load the offset into the index register
 	
     ldaa BUFFERSTARTADR,x   ; Load the current data in the buffer into ACCA
+    jsr bufferlastbyte      ; Buffer the last transmitted byte
+
     cmpa #$00               ; Check for NULL terminator
     beq marktxdone          ; If NULL terminator mark TX as done
 
     staa RBTHR              ; Store the data into the Transmit Holding Register
 
-    ldx #SPBOTADR
-    inc BUFFERCURRPOFF,x    ; Move to the next position in SRAM
+    ldx #CONSTSSTARTADR
+    inc BUFFERCPOFF,x       ; Move to the next position in SRAM
 
     inc BUFFERCCOFF,x       ; Increment the buffer current capacity 
 
@@ -225,24 +243,24 @@ hdlirfthre ldx #SPBOTADR    ; Load the base address (stack bottom) into X
 
     bra rthdlirfthre        ; Return from subroutine
 
-marktxdone ldx #SPBOTADR
+marktxdone ldx #CONSTSSTARTADR
     ldaa #01                
-    staa TXDONEOFF,x            ; Set the transmit done flag
+    staa TXDONEOFF,x        ; Set the transmit done flag
 
 ;! Here to indicate future idea for diodes indication for exit states of the program
-;  ldaa #$0C               ; Set /OUT1 high and /OUT2 high to indicate end of TX 
+;  ldaa #$0C                ; Set /OUT1 high and /OUT2 high to indicate end of TX 
 ;  staa MCR
 
     clra                    ; Clear the ACCA
 
-rthdlirfthre rts                     ; Return from subroutine
+rthdlirfthre rts            ; Return from subroutine
 
 ; Error validation for IRF for communication error
-valirferrtx ldaa IIR                ; Read Interrupt Identification Register
-    cmpa #UARTCODEERR     ; Check for UART error
-    bne rtvalerrtx      ; If no error return 
+valirferrtx ldaa IIR        ; Read Interrupt Identification Register
+    cmpa #UARTCODEERR       ; Check for UART error
+    bne rtvalerrtx          ; If no error return 
 
-    jsr hdlirferrtx     ;  Handle TX communication error 
+    jsr hdlirferrtx         ; Handle TX communication error 
 
 rtvalerrtx rts
 
@@ -250,6 +268,6 @@ rtvalerrtx rts
 ;? TODO  couter to reset the chip (with MR for ex.) 
 ;?       if the validation fails too many times
 ;  Handle TX communication error 
-hdlirferrtx ldaa LSRg               ; Read Line Status Register
+hdlirferrtx ldaa LSRg       ; Read Line Status Register
     clra                    ; Clear accumulator (error handling can be improved)
     rts
