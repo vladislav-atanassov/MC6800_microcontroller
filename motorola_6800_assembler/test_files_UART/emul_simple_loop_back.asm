@@ -6,10 +6,9 @@ LCR             .equ $2003  ; Line Control Register
 MCR             .equ $2004  ; MODEM Control Register  
 LSRg            .equ $2005  ; Line Status Register
 
-; Define UART Interrupt flags
-UARTCODETHRE    .equ $02    ; Code for UART Transmiter Holding register Empty
-UARTCODERDA     .equ $04    ; Code for Recieved Data Available
-UARTCODEERR     .equ $06    ; Code for UART error in IIR
+*; Define UART Line Status flags
+UARTFLAGRDA    equ $01      *; Received Data Available (RDA) flag (bit 0 of LSR)
+UARTFLAGTHRE   equ $20      *; Transmitter Holding Register Empty (THRE) flag (bit 5 of LSR)
 
 ;! These are not the real addresses! These addresses are for testing in SDK6800 Emulator
 SPADR           .equ $ff    ; Define the SP address
@@ -36,15 +35,15 @@ inituart ldaa #$07          ; Enable RDA, THRE interrupt flags
     lds #SPADR
 
 ;!  Used for testing the program's logic
-    ldaa #UARTCODERDA
-    staa IIR                ; Simulate the flag Recieved Data Available is up
+    ldaa #UARTFLAGRDA
+    staa LSRg               ; Simulate the flag Recieved Data Available is up
     ldaa #$41               ; Simulate data input (keyboard input: A (hex code in ascii 41)) 
     staa RBTHR              ; Load data into the Read Buffer/Tranmit Holding Register
 
-; Wait until the interrupt flag RDA is raised
-waitrda ldaa IIR            ; Read Interrupt Identification Register
-    cmpa #UARTCODERDA       ; Check for recieved data (flag RDA is up)
-    bne waitrda             ; If nothing recieved continue waiting
+; Poll until the interrupt flag RDA is raised
+pollrda ldaa LSRg           ; Read Line Status Register
+    anda #UARTFLAGRDA       ; Mask RDA flag (bit 0)
+    beq pollrda             ; If RDA is not set, continue polling
     
     ldaa RBTHR              ; Load the recieved data into ACCA
     psha                    ; Push the data into the stack
@@ -54,13 +53,13 @@ waitrda ldaa IIR            ; Read Interrupt Identification Register
     staa RBTHR
 
 ;!  Used for testing the program's logic
-    ldaa #UARTCODETHRE
-    staa IIR                ; Simulate the flag THRE is up
+    ldaa #UARTFLAGTHRE
+    staa LSRg               ; Simulate the flag THRE is up
 
-; Wait until the interrupt flag THRE is raised
-waitthre ldaa IIR           ; Read Interrupt Identification Register
-    cmpa #UARTCODETHRE      ; Check if data is ready to be accepted for transmit (flag THRE is up)
-    bne waitthre            ; Wait until empty
+; Poll until the interrupt flag THRE is raised
+pollthre ldaa LSRg          ; Read Interrupt Identification Register
+    anda #UARTFLAGTHRE      ; Check if data is ready to be accepted for transmit (flag THRE is up)
+    beq pollthre            ; Poll until empty
 
     pula                    ; When THRE is up store the recieved data into ACCA
     staa RBTHR              ; Store tha data into THR

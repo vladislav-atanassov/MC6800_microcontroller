@@ -36,20 +36,20 @@ _init_uart:
 *; Main loop
 _main_loop:
 
-*; Wait until the RDA flag is raised
-_wait_rda:
+*; Poll until the RDA flag is raised
+_poll_rda:
     ldaa LSRg               *; Read Line Status Register
     anda #UART_FLAG_RDA     *; Mask RDA flag (bit 0)
-    beq _wait_rda           *; If RDA is not set, continue waiting
+    beq _poll_rda           *; If RDA is not set, continue polling
     
     ldaa RBTHR              *; Load the received data into ACCA
     psha                    *; Push the data onto the stack
 
-*; Wait until the THRE flag is raised
-_wait_thre:
+*; Poll until the THRE flag is raised
+_poll_thre:
     ldaa LSRg               *; Read Line Status Register
     anda #UART_FLAG_THRE    *; Mask THRE flag (bit 5)
-    beq _wait_thre          *; If THRE is not set, continue waiting
+    beq _poll_thre          *; If THRE is not set, continue polling
 
     pula                    *; Pull the data from the stack into ACCA
     staa RBTHR              *; Write the data to Transmit Holding Register (THR)
