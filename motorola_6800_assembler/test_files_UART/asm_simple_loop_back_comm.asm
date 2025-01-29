@@ -7,12 +7,12 @@ MCR             equ $2004   *; Modem Control Register
 LSRg            equ $2005   *; Line Status Register
 
 *; Define UART Line Status flags
-UART_FLAG_RDA    equ $01    *; Received Data Available (RDA) flag (bit 0 of LSR)
-UART_FLAG_THRE   equ $20    *; Transmitter Holding Register Empty (THRE) flag (bit 5 of LSR)
+UART_FLAG_RDA    equ $04    *; Received Data Available (RDA) flag IIR
+UART_FLAG_THRE   equ $02    *; Transmitter Holding Register Empty (THRE) IIR
 
 SP_ADR           equ $1FFF  *; Define the SP address
 
-    org $0800               *; Start address of the program in the EPROM
+    org $0F00               *; Start address of the program in the EPROM
 
 *; Initialize 
 _init_uart:
@@ -35,25 +35,36 @@ _init_uart:
 
 *; Main loop
 _main_loop:
+*;  Setting /OUT1 not active and /OUT2 not active 
+    ldaa #$0C   
+    staa MCR
 
 *; Poll until the RDA flag is raised
 _poll_rda:
-    ldaa LSRg               *; Read Line Status Register
-    anda #UART_FLAG_RDA     *; Mask RDA flag (bit 0)
-    beq _poll_rda           *; If RDA is not set, continue polling
+    ldaa IIR                *; 
+    cmpa #UART_FLAG_RDA     *; 
+    bne _poll_rda           *; If RDA is not set, continue polling
     
     ldaa RBTHR              *; Load the received data into ACCA
     psha                    *; Push the data onto the stack
 
+*;  Setting /OUT1 active and /OUT2 not active 
+    ldaa #$08
+    staa MCR
+
 *; Poll until the THRE flag is raised
 _poll_thre:
-    ldaa LSRg               *; Read Line Status Register
-    anda #UART_FLAG_THRE    *; Mask THRE flag (bit 5)
+    ldaa IIR                *;
+    cmpa #UART_FLAG_THRE    *;
     beq _poll_thre          *; If THRE is not set, continue polling
 
     pula                    *; Pull the data from the stack into ACCA
     staa RBTHR              *; Write the data to Transmit Holding Register (THR)
 
+*;  Setting /OUT1 active and /OUT2 active 
+    ldaa #$00
+    staa MCR
+    
     bra _main_loop          *; Repeat the process
 
     end
