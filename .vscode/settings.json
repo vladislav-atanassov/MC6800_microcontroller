@@ -57,9 +57,14 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
+    "*.sqlbook": "sql",
+    "*.ndjson": "jsonl",
+    "*.dbclient-js": "javascript",
+    "*.asm": "m6800-as0",
     "globals.h": "c",
     "eval.h": "c",
-    "array": "cpp"
+    "array": "cpp",
+    "ostream": "cpp"
   },
   "[m68k]": {
     "editor.rulers": []
