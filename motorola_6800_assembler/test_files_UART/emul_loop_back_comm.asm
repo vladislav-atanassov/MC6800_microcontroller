@@ -86,7 +86,7 @@ initvars ldx #CONSTSSTARTADR
     rts
 
 ; Simulate increasing input pattern (01, 02, 03, ...)
-simulateinput ldaa #$01
+simulateinput ldaa #'1'
     ldx #CONSTSSTARTADR
     adda BUFFERCPOFF,x
     staa RBTHR
@@ -133,9 +133,6 @@ pollrda ldaa LSRg           ; Read Line Status Register
 hdlrda ldaa RBTHR           ; Read received character
     jsr buflastbyte      ; Buffer the last recieved byte
 
-    cmpa #$00               ; Check for NULL terminator 
-    beq markrxdone          ; If NULL terminator mark RX as done
-
 ;   Store the data at the next position in the SRAM
     jsr bufcurrptox
 	staa BUFFERSTARTADR,x   ; Store the recieved data in the current position of the buffer
@@ -144,6 +141,10 @@ hdlrda ldaa RBTHR           ; Read received character
     inc BUFFERCPOFF,x       ; Move to the next position in SRAM
 
     dec BUFFERCCOFF,x       ; Decrement the buffer current capacity 
+
+    ldaa BUFLASTBYTEOFF,x   *; Load the last transmitted byte into ACCA
+    cmpa #'9'               ; Check for NULL terminator 
+    beq markrxdone          ; If NULL terminator mark RX as done
 
 ;   Check if buffer is full
     ldaa BUFFERCCOFF,x      
@@ -225,13 +226,14 @@ hdlthre jsr bufcurrptox
     
     jsr buflastbyte      ; Buffer the last transmitted byte
 
-    cmpa #$00               ; Check for NULL terminator
-    beq marktxdone          ; If NULL terminator mark TX as done
-
     staa RBTHR              ; Store the data into the Transmit Holding Register
 
     ldx #CONSTSSTARTADR
     inc BUFFERCPOFF,x       ; Move to the next position in buffer
+
+    ldaa BUFLASTBYTEOFF,x   *; Load the last transmitted byte into ACCA
+    cmpa #'9'               ; Check for NULL terminator 
+    beq marktxdone          ; If NULL terminator mark RX as done
 
 ;   Check is the whole buffer is read
     ldaa BUFFERCPOFF,x
