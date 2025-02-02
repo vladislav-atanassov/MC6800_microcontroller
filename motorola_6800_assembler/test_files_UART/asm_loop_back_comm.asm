@@ -1,54 +1,55 @@
 *; Define UART registers
-RBTHR       equ $2000  *; UART Transmit Holding Register
-IER         equ $2001  *; Interrupt Enable Register
-IIR         equ $2002  *; Interrupt Identification Register
-LCR         equ $2003  *; Line Control Register
-MCR         equ $2004  *; MODEM Control Register  
-LSRg        equ $2005  *; Line Status Register
+RBTHR           equ $2000  *; UART Transmit Holding Register
+IER             equ $2001  *; Interrupt Enable Register
+IIR             equ $2002  *; Interrupt Identification Register
+LCR             equ $2003  *; Line Control Register
+MCR             equ $2004  *; MODEM Control Register  
+LSRg            equ $2005  *; Line Status Register
 
 *; Line Status Register Bits
-LSRRDA              equ $01    *; Received Data Available Bit
-LSRTHRE             equ $20    *; Transmitter Holding Register Empty Bit
+LSR_FLAG_DR     equ $01    *; Received Data Available Bit
+LSR_FLAG_THRE   equ $20    *; Transmitter Holding Register Empty Bit
 
-*; Define UART Interrupt flags
-UART_FLAG_THRE      equ $02    *; Code for UART Transmiter Holding register Empty
-UART_FLAG_RDA       equ $04    *; Code for Recieved Data Available
-UART_FLAG_ERR       equ $06    *; Code for UART error in IIR
+*; Define UART Interrupt Identification Register flags
+IIR_FLAG_RLS    equ $06     *; Reciever Line Status (RLS) flag IIR
+IIR_FLAG_RDA    equ $04     *; Received Data Available (RDA) flag IIR
+IIR_FLAG_THRE   equ $02     *; Transmitter Holding Register Empty (THRE) flag IIR
 
 *; Define variables, flags, constants needed for the program
 BUFFER_S_ADR    equ $0000   *; Define the staring address of the buffer to store the received data
-BUFFER_SIZE_MAX     equ $FF     *; Define buffer max size   
-C_START_ADR         equ $102    *; Define the start of the constants memory space   
-BUFFER_C_C_OFF      equ $00     *; Define offset from C_START_ADR for buffercurrcap
-BUFFER_FULL_OFF     equ $01     *; Define offset from C_START_ADR for bufferfull
-BUFFER_C_P_OFF      equ $02     *; Define offset from C_START_ADR for the last data is stored in buffer    
-RX_DONE_OFF         equ $03     *; Define offset from C_START_ADR for flag indicating if recieve has ended (0-F, 1-T)
-TX_DONE_OFF         equ $04     *; Define offset from C_START_ADR for flag indicating if transmit has ended (0-F, 1-T)
-BUF_L_BYTE_OFF      equ $05     *; Defite offset from C_START_ADR for buffering the last transmitted/recieved byte
+BUFFER_SIZE_MAX equ $FF     *; Define buffer max size   
+CONSTS_S_ADR    equ $102    *; Define the start of the constants memory space   
+BUFFER_C_C_OFF  equ $00     *; Define offset from CONSTS_S_ADR for buffercurrcap
+BUFFER_FULL_OFF equ $01     *; Define offset from CONSTS_S_ADR for bufferfull
+BUFFER_C_P_OFF  equ $02     *; Define offset from CONSTS_S_ADR for the last data is stored in buffer    
+RX_DONE_OFF     equ $03     *; Define offset from CONSTS_S_ADR for flag indicating if recieve has ended (0-F, 1-T)
+TX_DONE_OFF     equ $04     *; Define offset from CONSTS_S_ADR for flag indicating if transmit has ended (0-F, 1-T)
+BUF_L_BYTE_OFF  equ $05     *; Defite offset from CONSTS_S_ADR for buffering the last transmitted/recieved byte
 
-CALC_ADR_IDXR       equ $100
-CALC_ADR_ACC	    equ $101
+CALC_ADR_IDXR   equ $100
+CALC_ADR_ACC    equ $101
 
-*;! These are not the real addresses! These addresses are for testing in SDK6800 Emulator
-SP_ADR               equ $1FFF   *; Define the SP address
+SP_ADR          equ $1FFF   *; Define the SP address
 
-*;! This is not the real address! That address is for testing in SDK6800 Emulator
-    org $0C00              *; Start address of the program in the EPROM
+    org $0E00               *; Start address of the program in the EPROM
 
-*; Initialize UART
-_init_uart ldaa #$07          *; Enable RDA, THRE, Reciever Line Status interrupt flags
-    staa IER                *; Write to Interrupt Enable Register
+    org $0E00               *; Start address of the program in the EPROM
 
+*; Initialize 
+_init_uart:
     ldaa #$83               *; Set line control register (8 bits, no parity, 1 stop bit)
     staa LCR                *; Write to Line Control Register
 
-    ldaa #$0D               *; Set divisor latch for 9600 baud rate
-    staa $2000              *; Set low byte of baud rate
-    ldaa #$00
-    staa $2001              *; Set high byte of baud rate
+    ldaa #$0D               *; Set low byte of baud rate divisor (9600 baud)
+    staa RBTHR              *; Write to Divisor Latch Low Byte
+    ldaa #$00               *; Set high byte of baud rate divisor
+    staa IER                *; Write to Divisor Latch High Byte
 
-    ldaa #$03               *; Clear DLAB
+    ldaa #$03               *; Clear DLAB, set 8-bit data, no parity, 1 stop bit
     staa LCR                *; Write to Line Control Register
+
+    ldaa #$03               *; Enable RDA and THRE interrupt flags
+    staa IER                *; Write to Interrupt Enable Register
 
 *; Initialize SP
     lds #SP_ADR
@@ -57,9 +58,9 @@ _init_uart ldaa #$07          *; Enable RDA, THRE, Reciever Line Status interrup
 _main_loop:
     jsr _init_vars          *; Initialize variables
 
-    jsr _rx_loop              *; Start the RX loop
+    jsr _rx_loop            *; Start the RX loop
 
-    jsr _tx_loop              *; Start the TX loop
+    jsr _tx_loop            *; Start the TX loop
 
     bra _main_loop          *; Continue waiting for next data 
 
@@ -96,25 +97,25 @@ _buf_curr_p_to_x:
 _rx_loop:
     jsr _poll_rda           *; Wait for data to be recieved
 
-    jsr _hdl_rda              *; Handle Recieved Data Available
+    jsr _hdl_rda            *; Handle Recieved Data Available
 
-    jsr _val_rx_error          *; Check for communication error
+    jsr _val_rx_error       *; Check for communication error
 
     ldx #C_START_ADR
     ldaa RX_DONE_OFF,x       
     cmpa #01                *; Check if recieving is done
-    beq _r_rx_loop        *; If done return from subroutine
+    beq _r_rx_loop          *; If done return from subroutine
 	
     bra _rx_loop            *; If not done continue with the loop
 
 _r_rx_loop:
-    rts            *; Return from subroutine _rx_loop
+    rts                     *; Return from subroutine _rx_loop
 
-*; Poll for RDA
+*; Poll for received data
 _poll_rda:
-    ldaa IIR                *; 
-    cmpa #UART_FLAG_RDA     *; 
-    bne _poll_rda           *; If RDA is not set, continue polling
+    ldaa LSRg               *; Read the Line Status Register
+    anda #UART_LSR_DR       *; Check if Data Ready (DR) flag is set
+    beq _poll_rda           *; If no data is available, keep polling
     rts
 
 *; Handle Received Data Available   
@@ -210,11 +211,11 @@ _tx_loop:
 
 _r_tx_loop rts               *; Return from subroutine _tx_loop
 
-*; Poll for THRE
+*; Poll for THRE before transmitting
 _poll_thre:
-    ldaa IIR                *;
-    cmpa #UART_FLAG_THRE    
-    beq _poll_thre          *; If THRE is not set, continue polling
+    ldaa LSRg               *; Read the Line Status Register
+    anda #UART_LSR_THRE     *; Check if THRE flag is set
+    beq _poll_thre          *; If THRE is not set, keep polling
     rts
 
 *; Handle Transmitter Holding Register Empty
