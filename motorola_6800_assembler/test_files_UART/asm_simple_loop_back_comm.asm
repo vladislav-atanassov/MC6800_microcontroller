@@ -9,7 +9,11 @@ LSRg            equ $2005   *; Line Status Register
 UART_LSR_DR    equ $01      *; Data Ready (DR) flag in LSRg
 UART_LSR_THRE  equ $20      *; Transmitter Holding Register Empty (THRE) flag in LSRg
 
-    org $0F00               *; Start address of the program in the EPROM
+SP_ADR          equ $1FFF   *; Define the SP address
+    
+    org $EC00               *; Start address of the program in the EPROM
+
+    lds #SP_ADR
 
 *; Initialize 
 _init_uart:
@@ -27,24 +31,34 @@ _init_uart:
     ldaa #$03               *; Enable RDA and THRE interrupt flags
     staa IER                *; Write to Interrupt Enable Register
 
-*; Poll for received data
-_poll_rda:
-    ldaa LSRg               *; Read the Line Status Register
-    anda #UART_LSR_DR       *; Check if Data Ready (DR) flag is set
-    beq _poll_rda           *; If no data is available, keep polling
+_main_loop:
+    jsr _poll_dr
 
     ldab RBTHR              *; Read the received character into ACCB
+    pshb
+    clrb
+
+    jsr _poll_thre
+
+    pulb
+    stab RBTHR              *; Write the character back to the UART (echo)
+
+    bra _main_loop
+
+*; Poll for received data
+_poll_dr:
+    ldaa LSRg               *; Read the Line Status Register
+    anda #UART_LSR_DR       *; Check if Data Ready (DR) flag is set
+    beq _poll_dr            *; If no data is available, keep polling
+    rts
 
 *; Poll for THRE before transmitting
 _poll_thre:
     ldaa LSRg               *; Read the Line Status Register
     anda #UART_LSR_THRE     *; Check if THRE flag is set
     beq _poll_thre          *; If THRE is not set, keep polling
+    rts
 
-    stab RBTHR              *; Write the character back to the UART (echo)
-
-    bra _poll_rda           *; Repeat the loop
-    
     end
 
 *;!
