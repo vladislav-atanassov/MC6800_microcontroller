@@ -24,6 +24,8 @@ def s19_to_bin(s19_file):
             # Determine address length and data start based on record type
             if record_type == '1':  # S1 record (16-bit address)
                 addr = int(line[4:8], 16)
+                # Modify the address to shift the first hex digit to 0
+                adjusted_addr = (addr & 0x0FFF) | 0x0000
                 data_start = 8
             elif record_type == '9':  # End-of-file record
                 continue
@@ -35,9 +37,9 @@ def s19_to_bin(s19_file):
             address_bytes = (data_start - 4) // 2
             data_bytes = byte_count - address_bytes - 1
             
-            # Extract data bytes and write them to the address space at the specified address
+            # Extract data bytes and write them to the address space at the specified adjusted address
             data = bytes.fromhex(line[data_start:data_start + data_bytes * 2])
-            address_space[addr:addr + len(data)] = data
+            address_space[adjusted_addr:adjusted_addr + len(data)] = data
 
     # Write the entire initialized address space to the binary output file
     with open(bin_file, 'wb') as bin_out:
