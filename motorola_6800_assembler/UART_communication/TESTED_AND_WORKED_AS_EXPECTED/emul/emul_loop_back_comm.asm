@@ -1,5 +1,5 @@
 ; Define UART registers
-RBTHR           .equ $2000  ; UART Transmit Holding Register
+RBTHR           .equ $2000  ; Receiver Buffer / Transmit Holding Register
 IER             .equ $2001  ; Interrupt Enable Register
 IIR             .equ $2002  ; Interrupt Identification Register
 LCR             .equ $2003  ; Line Control Register
@@ -7,25 +7,24 @@ MCR             .equ $2004  ; MODEM Control Register
 LSRg            .equ $2005  ; Line Status Register
 
 ; Line Status Register Bits
-LSRRDA          .equ $01    ; Received Data Available Bit
+LSRDR           .equ $01    ; Data Ready Bit
 LSRTHRE         .equ $20    ; Transmitter Holding Register Empty Bit
 
 ; Define UART Interrupt flags
-UARTCODETHRE    .equ $02    ; Code for UART Transmiter Holding register Empty
-UARTCODERDA     .equ $04    ; Code for Recieved Data Available
 UARTCODEERR     .equ $06    ; Code for UART error in IIR
 
 ;! These are not the real addresses! These addresses are for testing in SDK6800 Emulator
 ; Define variables, flags, constants needed for the program
 BUFFERSTARTADR  .equ $0000  ; Define the staring address of the buffer to store the received data
-BUFFERSIZEMAX   .equ $0f    ; Define buffer max size   
-CONSTSSTARTADR  .equ $12    ; Define the start of the constants memory space   
-BUFFERCCOFF     .equ $00    ; Define offset from CONSTSSTARTADR for buffercurrcap
-BUFFERFULLOFF   .equ $01    ; Define offset from CONSTSSTARTADR for bufferfull
-BUFFERCPOFF     .equ $02    ; Define offset from CONSTSSTARTADR for a variable that keeps track of where the last data is stored in buffer    
-RXDONEOFF       .equ $03    ; Define offset from CONSTSSTARTADR for flag indicating if recieve has ended (0-F, 1-T)
-TXDONEOFF       .equ $04    ; Define offset from CONSTSSTARTADR for flag indicating if transmit has ended (0-F, 1-T)
-BUFLASTBYTEOFF  .equ $05    ; Defite offset from CONSTSSTARTADR for buffering the last transmitted/recieved byte
+BUFFERSIZEMAX   .equ $0f    ; Define buffer max size
+CONSTSSTARTADR  .equ $12    ; Define the start of the constants memory space
+; Define offset from CONSTSSTARTADR for the values:
+BUFFERCCOFF     .equ $00    ; Buffer currect capacity
+BUFFERFULLOFF   .equ $01    ; Buffer Full Flag
+BUFFERCPOFF     .equ $02    ; Buffer currect position
+RXDONEOFF       .equ $03    ; Flag indicating if recieve has ended (0-F, 1-T)
+TXDONEOFF       .equ $04    ; Flag indicating if transmit has ended (0-F, 1-T)
+BUFLASTBYTEOFF  .equ $05    ; Buffering the last transmitted/recieved byte
 
 ;! These are not the real addresses! These addresses are for testing in SDK6800 Emulator
 CALCADRIDXR     .equ $10
@@ -56,7 +55,7 @@ inituart ldaa #$07          ; Enable RDA, THRE, Reciever Line Status interrupt f
     lds #SPADR
 
 ; Main loop
-mainloop ldaa #LSRRDA       ; Simulating data recieved (flag RDA up)
+mainloop ldaa #LSRDR       ; Simulating data recieved (flag RDA up)
     staa LSRg
     
     jsr initvars            
@@ -125,11 +124,11 @@ rtsrxloop rts               ; Return from subroutine rxloop
 
 ; Poll for RDA
 pollrda ldaa LSRg           ; Read Line Status Register
-    anda #LSRRDA            ; Check if RDA bit is set
+    anda #LSRDR            ; Check if RDA bit is set
     beq pollrda             ; Wait until RDA is set
     rts
 
-; Handle Received Data Available   
+; Handle Data Ready   
 hdlrda ldaa RBTHR           ; Read received character
     jsr buflastbyte      ; Buffer the last recieved byte
 
@@ -142,7 +141,7 @@ hdlrda ldaa RBTHR           ; Read received character
 
     dec BUFFERCCOFF,x       ; Decrement the buffer current capacity 
 
-    ldaa BUFLASTBYTEOFF,x   *; Load the last transmitted byte into ACCA
+    ldaa BUFLASTBYTEOFF,x   ; Load the last transmitted byte into ACCA
     cmpa #'9'               ; Check for NULL terminator 
     beq markrxdone          ; If NULL terminator mark RX as done
 
@@ -282,3 +281,6 @@ rtsvaltxerror rts
 hdltxerror ldaa LSRg       ; Read Line Status Register
     clra                    ; Clear accumulator (error handling can be improved)
     rts
+
+;!
+;* TESTED AND WORKED AS EXPECTED

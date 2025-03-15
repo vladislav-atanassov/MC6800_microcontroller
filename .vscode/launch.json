@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/Vladislav Atanassov/Documents/MC6800 - microcontroller/motorola-6800-assembler-master/test",
-      "program": "c:/Users/Vladislav Atanassov/Documents/MC6800 - microcontroller/motorola-6800-assembler-master/test/build/Debug/outDebug",
+      "cwd": "c:/Users/Vladislav Atanassov/Documents/MC6800_microcontroller/motorola_6800_assembler/test_files_UART",
+      "program": "c:/Users/Vladislav Atanassov/Documents/MC6800_microcontroller/motorola_6800_assembler/test_files_UART/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

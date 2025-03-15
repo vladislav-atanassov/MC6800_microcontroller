@@ -167,7 +167,8 @@ _tx_loop:
 
     bra _tx_loop            *; If not done continue with the loop
 
-_r_tx_loop rts              *; Return from subroutine _tx_loop
+_r_tx_loop:
+    rts                     *; Return from subroutine _tx_loop
 
 *; Poll for THRE before transmitting
 _poll_thre:

@@ -3,4 +3,6 @@
 *.s19
 *.mp4
 *.bin
+*.exe
+*.tmp
 \test_files_UART\Fwd_refs

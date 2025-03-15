@@ -65,3 +65,6 @@ pollthre ldaa LSRg          ; Read Interrupt Identification Register
     staa RBTHR              ; Store tha data into THR
 
     .end
+
+;!
+;* TESTED AND WORKED AS EXPECTED

@@ -35,13 +35,13 @@ _main_loop:
     jsr _poll_dr
 
     ldab RBTHR              *; Read the received character into ACCB
-    pshb
-    clrb
+    pshb                    *; Push the received character to into the Stack
+    clrb                    *; Clear ACCB
 
     jsr _poll_thre
 
-    pulb
-    stab RBTHR              *; Write the character back to the UART (echo)
+    pulb                    *; Pull the received character to into ACCB
+    stab RBTHR              *; Write the character back to the UART
 
     bra _main_loop
 
